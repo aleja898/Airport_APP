@@ -1,0 +1,289 @@
+{% extends 'base.html' %}
+
+{% block title %}Calculadora de Distancia entre Aeropuertos{% endblock %}
+
+{% block header_title %}Calculadora de Distancias{% endblock %}
+{% block header_subtitle %}Encuentra la distancia entre cualquier par de aeropuertos{% endblock %}
+
+{% block content %}
+<div class="card">
+    <h2 style="color: var(--azul-principal); margin-bottom: 1.5rem; text-align: center;">
+        Ingresa los Códigos IATA
+    </h2>
+    
+    <!-- FORMULARIO -->
+    <form id="airportForm" method="post">
+        {% csrf_token %}
+        
+        <div class="form-group">
+            <label for="aeropuerto_origen">Aeropuerto de Origen:</label>
+            <input 
+                type="text" 
+                id="aeropuerto_origen" 
+                name="aeropuerto_origen"
+                class="form-control"
+                placeholder="Ej: BOG (Bogotá)" 
+                maxlength="3" 
+                pattern="[A-Za-z]{3}"
+                title="Ingrese código IATA de 3 letras"
+                required
+            >
+        </div>
+        
+        <div class="form-group">
+            <label for="aeropuerto_destino">Aeropuerto de Destino:</label>
+            <input 
+                type="text" 
+                id="aeropuerto_destino" 
+                name="aeropuerto_destino"
+                class="form-control"
+                placeholder="Ej: JFK (Nueva York)" 
+                maxlength="3" 
+                pattern="[A-Za-z]{3}"
+                title="Ingrese código IATA de 3 letras"
+                required
+            >
+        </div>
+        
+        <div style="text-align: center;">
+            <button type="submit" class="btn btn-primary">
+                ✈️ Calcular Distancia
+            </button>
+        </div>
+    </form>
+    
+    <!-- LOADING -->
+    <div id="loading" class="loading">
+        <div class="spinner"></div>
+        <p>Calculando distancia...</p>
+    </div>
+    
+    <!-- ÁREA DE RESULTADOS -->
+    <div id="resultados" style="display: none;">
+        <div class="resultado-card">
+            <h3 style="text-align: center; margin-bottom: 1rem; font-size: 1.3rem;">
+                🎯 Resultado del Cálculo
+            </h3>
+            
+            <div class="resultado-item">
+                <span class="resultado-label"><img src="https://cdn-icons-png.flaticon.com/512/4337/4337485.png" alt="Logo de origen" width="20px"> Origen:</span>
+                <span class="resultado-valor" id="origen"></span>
+            </div>
+            
+            <div class="resultado-item">
+                <span class="resultado-label"><img src="https://cdn-icons-png.flaticon.com/512/854/854894.png" alt="Logo de destino" width="20px"> Destino:</span>
+                <span class="resultado-valor" id="destino"></span>
+            </div>
+            
+            <div class="resultado-item">
+                <span class="resultado-label">📏 Distancia (km):</span>
+                <span class="resultado-valor" id="distancia_km"></span>
+            </div>
+            
+            <div class="resultado-item">
+                <span class="resultado-label">📐 Distancia (millas):</span>
+                <span class="resultado-valor" id="distancia_millas"></span>
+            </div>
+            
+            <div class="resultado-item">
+                <span class="resultado-label">⚓ Millas náuticas:</span>
+                <span class="resultado-valor" id="distancia_nauticas"></span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- ÁREA DE ERRORES -->
+    <div id="error" class="alert alert-error" style="display: none;"></div>
+    
+    <!-- Información adicional -->
+    <div class="alert alert-info" style="margin-top: 2rem;">
+        <strong>💡 Tip:</strong> Los códigos IATA son de 3 letras. Ejemplos: BOG (Bogotá), JFK (Nueva York), LHR (Londres), NRT (Tokio).
+    </div>
+</div>
+
+<script>
+// JavaScript para el formulario de distancia
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('airportForm');
+    
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Limpiar estados anteriores
+            const resultados = document.getElementById('resultados');
+            const error = document.getElementById('error');
+            const loading = document.getElementById('loading');
+            
+            if (resultados) resultados.style.display = 'none';
+            if (error) error.style.display = 'none';
+            if (loading) loading.style.display = 'block';
+            
+            // Remover clases de error de los inputs
+            const origenInput = document.getElementById('aeropuerto_origen');
+            const destinoInput = document.getElementById('aeropuerto_destino');
+            
+            if (origenInput) {
+                origenInput.classList.remove('error', 'success');
+            }
+            if (destinoInput) {
+                destinoInput.classList.remove('error', 'success');
+            }
+            
+            // Capturar y validar datos del formulario
+            const origen = origenInput ? origenInput.value.trim().toUpperCase() : '';
+            const destino = destinoInput ? destinoInput.value.trim().toUpperCase() : '';
+            
+            // Validaciones del lado del cliente
+            if (!origen || !destino) {
+                mostrarError('Debe ingresar ambos códigos de aeropuerto');
+                return;
+            }
+            
+            if (origen.length !== 3 || destino.length !== 3) {
+                mostrarError('Los códigos IATA deben tener exactamente 3 caracteres');
+                return;
+            }
+            
+            if (!/^[A-Z]{3}$/.test(origen) || !/^[A-Z]{3}$/.test(destino)) {
+                mostrarError('Los códigos deben contener solo letras');
+                return;
+            }
+            
+            if (origen === destino) {
+                mostrarError('Los códigos de aeropuerto no pueden ser iguales');
+                return;
+            }
+            
+            // Preparar datos para envío
+            const formData = new FormData();
+            formData.append('aeropuerto_origen', origen);
+            formData.append('aeropuerto_destino', destino);
+            formData.append('csrfmiddlewaretoken', document.querySelector('[name=csrfmiddlewaretoken]').value);
+            
+            // Enviar petición AJAX
+            fetch('/calculate/', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (loading) loading.style.display = 'none';
+                
+                if (data.success) {
+                    // Marcar inputs como exitosos
+                    if (origenInput) origenInput.classList.add('success');
+                    if (destinoInput) destinoInput.classList.add('success');
+                    
+                    // Mostrar resultados
+                    const paisorigenElement = document.getElementById('pais_origen');
+                    const origenElement = document.getElementById('origen');
+                    const paisdestinoElement = document.getElementById('pais_destino');
+                    const destinoElement = document.getElementById('destino');
+                    const zona_horariaElement = document.getElementById('zona_horaria');
+                    const distanciaKmElement = document.getElementById('distancia_km');
+                    const distanciaMillasElement = document.getElementById('distancia_millas');
+                    const distanciaNauticasElement = document.getElementById('distancia_nauticas');
+                    
+                    if (paisorigenElement) {
+                        paisorigenElement.textContent = data.aeropuerto_origen.pais;
+                    }
+                    
+                    if (origenElement) {
+                        origenElement.textContent = `${data.aeropuerto_origen.codigo} - ${data.aeropuerto_origen.nombre}, ${data.aeropuerto_origen.ciudad}, ${data.aeropuerto_origen.pais}, ${data.zona_horaria}`;
+                    }
+                    
+                    if (paisdestinoElement) {
+                        paisdestinoElement.textContent = data.aeropuerto_destino.pais;
+                    }
+                    
+                    if (destinoElement) {
+                        destinoElement.textContent = `${data.aeropuerto_destino.codigo} - ${data.aeropuerto_destino.nombre}, ${data.aeropuerto_destino.ciudad},${data.aeropuerto_destino.pais}, ${data.zona_horaria}`;
+                    }
+                    
+                    if (zona_horariaElement) {
+                        zona_horariaElement.textContent = data.zona_horaria;
+                    }
+
+                    if (distanciaKmElement) {
+                        distanciaKmElement.textContent = new Intl.NumberFormat('es-CO').format(Math.round(data.distancia_km)) + ' km';
+                    }
+                    
+                    if (distanciaMillasElement) {
+                        distanciaMillasElement.textContent = new Intl.NumberFormat('es-CO').format(Math.round(data.distancia_millas)) + ' mi';
+                    }
+                    
+                    if (distanciaNauticasElement) {
+                        distanciaNauticasElement.textContent = new Intl.NumberFormat('es-CO').format(Math.round(data.distancia_millas_nauticas)) + ' nm';
+                    }
+                    
+                    if (resultados) {
+                        resultados.style.display = 'block';
+                        // Scroll suave hacia los resultados
+                        resultados.scrollIntoView({ 
+                            behavior: 'smooth', 
+                            block: 'center' 
+                        });
+                    }
+                    
+                } else {
+                    mostrarError(data.error || 'Error desconocido');
+                }
+            })
+            .catch(error => {
+                if (loading) loading.style.display = 'none';
+                mostrarError('Error de conexión. Verifique su conexión a internet.');
+                console.error('Error:', error);
+            });
+        });
+    }
+    
+    // Convertir a mayúsculas mientras el usuario escribe
+    const origenInput = document.getElementById('aeropuerto_origen');
+    const destinoInput = document.getElementById('aeropuerto_destino');
+    
+    if (origenInput) {
+        origenInput.addEventListener('input', function(e) {
+            e.target.value = e.target.value.toUpperCase();
+            e.target.classList.remove('error', 'success');
+        });
+    }
+    
+    if (destinoInput) {
+        destinoInput.addEventListener('input', function(e) {
+            e.target.value = e.target.value.toUpperCase();
+            e.target.classList.remove('error', 'success');
+        });
+    }
+});
+
+function mostrarError(mensaje) {
+    const loading = document.getElementById('loading');
+    const error = document.getElementById('error');
+    const origenInput = document.getElementById('aeropuerto_origen');
+    const destinoInput = document.getElementById('aeropuerto_destino');
+    
+    if (loading) loading.style.display = 'none';
+    
+    if (error) {
+        error.textContent = mensaje;
+        error.style.display = 'block';
+        
+        // Scroll hacia el error
+        error.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'center' 
+        });
+    }
+    
+    // Marcar inputs con error
+    if (origenInput) origenInput.classList.add('error');
+    if (destinoInput) destinoInput.classList.add('error');
+}
+</script>
+{% endblock %}

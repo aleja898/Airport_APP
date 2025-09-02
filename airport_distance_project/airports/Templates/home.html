@@ -1,0 +1,111 @@
+{% extends 'base.html' %}
+
+{% block title %}Inicio - Calculadora de Distancias{% endblock %}
+
+{% block header_title %}Bienvenido{% endblock %}
+{% block header_subtitle %}Sistema de Cálculo de Distancias entre Aeropuertos{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div style="text-align: center; margin-bottom: 2rem;">
+        <h2 style="color: var(--azul-principal); margin-bottom: 1rem;">
+        <img src="https://cdn-icons-png.flaticon.com/512/471/471094.png" alt="Logo del mundo" width="50px">
+            Explora las Distancias del Mundo
+        </h2>
+        <p style="font-size: 1.1rem; color: var(--gris-medio); line-height: 1.8;">
+            Descubre las distancias exactas entre cualquier par de aeropuertos del mundo 
+            utilizando códigos IATA de 3 letras.
+        </p>
+    </div>
+
+    <!-- Características principales -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin: 2rem 0;">
+        <div style="text-align: center; padding: 1rem;">
+            <div style="font-size: 3rem; margin-bottom: 0.5rem;"><img src="https://img.pikbest.com/origin/09/22/51/59JpIkbEsTVCG.png!bw700" alt="Logo de la página de inicio" width="50px"></div>
+            <h3 style="color: var(--azul-oscuro); margin-bottom: 0.5rem;">Rápido y Preciso</h3>
+            <p style="color: var(--gris-medio);">Cálculos instantáneos con datos actualizados de la API Airport Gap</p>
+        </div>
+        
+        <div style="text-align: center; padding: 1rem;">
+            <div style="font-size: 3rem; margin-bottom: 0.5rem;">🌐</div>
+            <h3 style="color: var(--azul-oscuro); margin-bottom: 0.5rem;">Cobertura Global</h3>
+            <p style="color: var(--gris-medio);">Acceso a miles de aeropuertos en todo el mundo</p>
+        </div>
+        
+        <div style="text-align: center; padding: 1rem;">
+            <div style="font-size: 3rem; margin-bottom: 0.5rem;"><img src="https://cdn-icons-png.flaticon.com/512/10645/10645636.png" alt="Logo de la página de inicio" width="50px"></div>
+            <h3 style="color: var(--azul-oscuro); margin-bottom: 0.5rem;">Múltiples Unidades</h3>
+            <p style="color: var(--gris-medio);">Resultados en kilómetros, millas y millas náuticas</p>
+        </div>
+    </div>
+
+    <!-- Botón de acción principal -->
+    <div style="text-align: center; margin: 2rem 0;">
+        <a href="{% url 'airports:airport_distance' %}" class="btn btn-primary" style="font-size: 1.1rem; padding: 1rem 2.5rem;">
+            🚀 Comenzar Cálculo
+        </a>
+    </div>
+</div>
+
+<!-- Ejemplos de códigos IATA populares -->
+<div class="card">
+    <h3 style="color: var(--azul-principal); margin-bottom: 1.5rem; text-align: center;">
+    <img src="https://cdn-icons-png.flaticon.com/512/103/103871.png" alt="Logo de códigos IATA" width="30px">
+        Códigos IATA Populares
+    </h3>
+    
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+        <div style="background: var(--azul-muy-claro); padding: 1rem; border-radius: 8px; text-align: center;">
+            <strong style="color: var(--azul-oscuro);">
+            <img src="https://cdn-icons-png.freepik.com/512/4746/4746072.png" alt="Logo de códigos IATA" width="20px">
+                América
+            </strong><br>
+            BOG - Bogotá<br>
+            JFK - Nueva York<br>
+            LAX - Los Ángeles<br>
+            MEX - Ciudad de México
+        </div>
+        
+        <div style="background: var(--azul-muy-claro); padding: 1rem; border-radius: 8px; text-align: center;">
+            <strong style="color: var(--azul-oscuro);">
+            <img src="https://cdn-icons-png.flaticon.com/512/703/703334.png" alt="Logo de códigos IATA" width="20px">
+                Europa
+            </strong><br>
+            LHR - Londres<br>
+            CDG - París<br>
+            FCO - Roma<br>
+            MAD - Madrid
+        </div>
+        
+        <div style="background: var(--azul-muy-claro); padding: 1rem; border-radius: 8px; text-align: center;">
+            <strong style="color: var(--azul-oscuro);">
+            <img src="https://cdn-icons-png.flaticon.com/512/2384/2384988.png" alt="Logo de códigos IATA" width="20px">
+                Asia-Pacífico
+            </strong><br>
+            NRT - Tokio<br>
+            PEK - Beijing<br>
+            SYD - Sydney<br>
+            SIN - Singapur
+        </div>
+    </div>
+</div>
+
+<!-- Información sobre códigos IATA -->
+<div class="card">
+    <h3 style="color: var(--azul-principal); margin-bottom: 1rem;">
+        ❓ ¿Qué son los códigos IATA?
+    </h3>
+    <p style="line-height: 1.8; color: var(--texto-oscuro);">
+        Los códigos IATA (International Air Transport Association) son identificadores únicos 
+        de 3 letras asignados a aeropuertos de todo el mundo. Estos códigos facilitan la 
+        identificación rápida y precisa de aeropuertos en la industria de la aviación.
+    </p>
+    
+    <div style="background: var(--azul-muy-claro); padding: 1rem; border-radius: 8px; margin-top: 1rem;">
+        <p style="margin: 0; color: var(--azul-oscuro); font-weight: 500;">
+            <strong>💡 Ejemplo de uso:</strong> Para calcular la distancia entre Bogotá y Nueva York, 
+            ingresa "BOG" como origen y "JFK" como destino.
+        </p>
+    </div>
+</div>
+{% endblock %}
