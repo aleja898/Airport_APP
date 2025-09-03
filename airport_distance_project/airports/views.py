@@ -1,11 +1,13 @@
 from django.shortcuts import render
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from django.contrib import messages
 import requests
 import json
-
-# Contiene la lógica para procesar las peticiones a la API de Airport Gap
+from django.shortcuts import render
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+import requests
+import json
 
 # Vista de página de inicio
 def home_view(request):
@@ -16,95 +18,88 @@ def home_view(request):
 def airport_distance_view(request):
     """Vista que muestra el formulario de cálculo de distancias"""
     return render(request, 'airport_distance.html')
-
-@csrf_exempt  # Desactivar CSRF para simplificar las pruebas con herramientas externas
+@csrf_exempt
 def calculate_distance(request):
     """Vista que procesa el cálculo de distancia entre aeropuertos"""
-    
     if request.method == 'POST':
         try:
-            # Obtener datos del formulario
             aeropuerto_origen = request.POST.get('aeropuerto_origen', '').strip().upper()
             aeropuerto_destino = request.POST.get('aeropuerto_destino', '').strip().upper()
-            
-            # Validar que ambos campos estén llenos
+
+            # ... (Las validaciones de los campos siguen siendo las mismas) ...
             if not aeropuerto_origen or not aeropuerto_destino:
-                return JsonResponse({
-                    'success': False,
-                    'error': 'Debe ingresar ambos códigos de aeropuerto'
-                })
+                return JsonResponse({'success': False, 'error': 'Debe ingresar ambos códigos de aeropuerto'})
             
-            # Validar que los códigos tengan 3 caracteres
             if len(aeropuerto_origen) != 3 or len(aeropuerto_destino) != 3:
-                return JsonResponse({
-                    'success': False,
-                    'error': 'Los códigos IATA deben tener exactamente 3 caracteres'
-                })
+                return JsonResponse({'success': False, 'error': 'Los códigos IATA deben tener exactamente 3 caracteres'})
             
-            # Validar que sean solo letras
             if not aeropuerto_origen.isalpha() or not aeropuerto_destino.isalpha():
-                return JsonResponse({
-                    'success': False,
-                    'error': 'Los códigos IATA deben contener solo letras'
-                })
+                return JsonResponse({'success': False, 'error': 'Los códigos IATA deben contener solo letras'})
                 
-            # Validar que los aeropuertos NO sean iguales
             if aeropuerto_origen == aeropuerto_destino:
+                return JsonResponse({'success': False, 'error': 'Los códigos IATA de los aeropuertos no pueden ser iguales'})
+
+            base_url = "https://airportgap.com/api"
+
+            # 1. Obtener datos del aeropuerto de origen
+            response_origen = requests.get(f"{base_url}/airports/{aeropuerto_origen}", timeout=10)
+            if response_origen.status_code != 200:
                 return JsonResponse({
                     'success': False,
-                    'error': 'Los códigos IATA de los aeropuertos no pueden ser iguales'
+                    'error': f'Error al obtener datos del aeropuerto de origen: Código {aeropuerto_origen} no es válido.'
                 })
-            
-            # URL de la API
-            base_url = "https://airportgap.com/api/airports"
-            
-            # Datos para el POST request
-            airports_data = {
-                "from": aeropuerto_origen,
-                "to": aeropuerto_destino
-            }
-            
-            # Realizar la petición POST
-            response_post = requests.post(
-                f"{base_url}/distance", 
-                json=airports_data, 
+            data_origen = response_origen.json()['data']['attributes']
+
+            # 2. Obtener datos del aeropuerto de destino
+            response_destino = requests.get(f"{base_url}/airports/{aeropuerto_destino}", timeout=10)
+            if response_destino.status_code != 200:
+                return JsonResponse({
+                    'success': False,
+                    'error': f'Error al obtener datos del aeropuerto de destino: Código {aeropuerto_destino} no es válido.'
+                })
+            data_destino = response_destino.json()['data']['attributes']
+
+            # 3. Calcular la distancia
+            airports_data = {"from": aeropuerto_origen, "to": aeropuerto_destino}
+            response_distancia = requests.post(
+                f"{base_url}/airports/distance",
+                json=airports_data,
                 timeout=10,
                 headers={'Content-Type': 'application/json'}
             )
-            
-            if response_post.status_code == 200:
-                datos = response_post.json()
+
+            if response_distancia.status_code == 200:
+                datos_distancia = response_distancia.json()
                 
-                # Extraer información de la respuesta
                 result_data = {
                     'success': True,
-                    'codigo': datos["data"]["id"],
+                    'distancia_km': datos_distancia["data"]["attributes"]["kilometers"],
+                    'distancia_millas': datos_distancia["data"]["attributes"]["miles"],
+                    'distancia_millas_nauticas': datos_distancia["data"]["attributes"]["nautical_miles"],
                     'aeropuerto_origen': {
-                        'pais': datos["data"]["attributes"]["from_airport"]["country"],
-                        'nombre': datos["data"]["attributes"]["from_airport"]["name"],
-                        'ciudad': datos["data"]["attributes"]["from_airport"]["city"],
-                        'codigo': aeropuerto_origen
+                        'nombre': data_origen['name'],
+                        'ciudad': data_origen['city'],
+                        'pais': data_origen['country'],
+                        'codigo': aeropuerto_origen,
+                        'zona_horaria': data_origen['timezone']
                     },
                     'aeropuerto_destino': {
-                        'pais': datos["data"]["attributes"]["to_airport"]["country"],
-                        'nombre': datos["data"]["attributes"]["to_airport"]["name"],
-                        'ciudad': datos["data"]["attributes"]["to_airport"]["city"],
+                        'nombre': data_destino['name'],
+                        'ciudad': data_destino['city'],
+                        'pais': data_destino['country'],
                         'codigo': aeropuerto_destino,
-                    },
-                    'zona_horaria': datos["data"]["attributes"]["timezone"],
-                    'distancia_km': datos["data"]["attributes"]["kilometers"],
-                    'distancia_millas': datos["data"]["attributes"]["miles"],
-                    'distancia_millas_nauticas': datos["data"]["attributes"]["nautical_miles"]
+                        'zona_horaria': data_destino['timezone']
+                    }
                 }
-                
                 return JsonResponse(result_data)
-            
-            elif response_post.status_code == 422:
+
+            # ... (Manejo de errores de la API de distancia) ...
+            elif response_distancia.status_code == 422:
                 return JsonResponse({
                     'success': False,
                     'error': 'Uno o ambos códigos de aeropuerto no son válidos. Verifique que sean códigos IATA correctos.'
                 })
-            elif response_post.status_code == 404:
+            elif response_distancia.status_code == 404:
                 return JsonResponse({
                     'success': False,
                     'error': 'Aeropuerto no encontrado. Verifique los códigos IATA ingresados.'
@@ -112,36 +107,16 @@ def calculate_distance(request):
             else:
                 return JsonResponse({
                     'success': False,
-                    'error': f'Error en la API: {response_post.status_code}. Intente nuevamente.'
+                    'error': f'Error en la API: {response_distancia.status_code}. Intente nuevamente.'
                 })
-                
+
         except requests.exceptions.Timeout:
-            return JsonResponse({
-                'success': False,
-                'error': 'Tiempo de espera agotado. La API está tardando mucho en responder.'
-            })
+            return JsonResponse({'success': False, 'error': 'Tiempo de espera agotado. La API está tardando mucho en responder.'})
         except requests.exceptions.ConnectionError:
-            return JsonResponse({
-                'success': False,
-                'error': 'Error de conexión. Verifique su conexión a internet e intente nuevamente.'
-            })
-        except json.JSONDecodeError:
-            return JsonResponse({
-                'success': False,
-                'error': 'Error al procesar la respuesta de la API. Intente nuevamente.'
-            })
-        except KeyError as e:
-            return JsonResponse({
-                'success': False,
-                'error': f'Error en la estructura de datos de la API: {str(e)}'
-            })
+            return JsonResponse({'success': False, 'error': 'Error de conexión. Verifique su conexión a internet e intente nuevamente.'})
+        except (json.JSONDecodeError, KeyError) as e:
+            return JsonResponse({'success': False, 'error': f'Error al procesar la respuesta de la API. Intente nuevamente. Detalles: {e}'})
         except Exception as e:
-            return JsonResponse({
-                'success': False,
-                'error': f'Error inesperado: {str(e)}'
-            })
-    
-    return JsonResponse({
-        'success': False,
-        'error': 'Método no permitido. Use POST para calcular distancias.'
-    })
+            return JsonResponse({'success': False, 'error': f'Error inesperado: {str(e)}'})
+
+    return JsonResponse({'success': False, 'error': 'Método no permitido. Use POST para calcular distancias.'})
